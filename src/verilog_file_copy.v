@@ -18,8 +18,8 @@ module tt_um_mark28277 (
     assign reset = ~rst_n;
 
     // Neural network input/output signals
-    wire [31:0] input_data [0:3071];
-    wire [31:0] output_data [0:9];
+    wire [31:0] input_data [3071:0];
+    wire [31:0] output_data [9:0];
 
     // Input data assignment from 8-bit ports
     // Note: This is a simplified interface - in practice you'd need
@@ -38,16 +38,16 @@ module tt_um_mark28277 (
     endgenerate
 
     // Convolutional Layer 0 signals
-    wire [31:0] layer_0_out [0:2047];
+    wire [31:0] layer_0_out [2047:0];
 
     // ReLU Layer 1 signals
-    wire [31:0] layer_1_out [0:2047];
+    wire [31:0] layer_1_out [2047:0];
 
     // MaxPool Layer 2 signals
-    wire [31:0] layer_2_out [0:2*4*4-1];
+    wire [31:0] layer_2_out [2*4*4-1:0];
 
     // Linear Layer 3 signals
-    wire [31:0] layer_3_out [0:9];
+    wire [31:0] layer_3_out [9:0];
 
 
     // Convolutional Layer 0
@@ -146,12 +146,12 @@ module maxpool2d_layer #(
 )(
     input wire clk,
     input wire reset,
-    input wire [31:0] input_data [0:CHANNELS*INPUT_SIZE*INPUT_SIZE-1],
-    output wire [31:0] output_data [0:CHANNELS*(INPUT_SIZE/KERNEL_SIZE)*(INPUT_SIZE/KERNEL_SIZE)-1]
+    input wire [31:0] input_data [CHANNELS*INPUT_SIZE*INPUT_SIZE-1:0],
+    output wire [31:0] output_data [CHANNELS*(INPUT_SIZE/KERNEL_SIZE)*(INPUT_SIZE/KERNEL_SIZE)-1:0]
 );
 
     // Internal signals
-    reg [31:0] output_reg [0:CHANNELS*(INPUT_SIZE/KERNEL_SIZE)*(INPUT_SIZE/KERNEL_SIZE)-1];
+    reg [31:0] output_reg [CHANNELS*(INPUT_SIZE/KERNEL_SIZE)*(INPUT_SIZE/KERNEL_SIZE)-1:0];
     integer c, i, j, ki, kj;
     integer input_i, input_j, output_i, output_j;
     integer index;
@@ -225,13 +225,13 @@ module linear_layer #(
 )(
     input wire clk,
     input wire reset,
-    input wire [31:0] input_data [0:IN_FEATURES-1],
-    output wire [31:0] output_data [0:OUT_FEATURES-1]
+    input wire [31:0] input_data [IN_FEATURES-1:0],
+    output wire [31:0] output_data [OUT_FEATURES-1:0]
 );
 
     // Weight and bias storage with actual trained weights
-    reg [31:0] weights [0:OUT_FEATURES-1][0:IN_FEATURES-1];
-    reg [31:0] biases [0:OUT_FEATURES-1];
+    reg [31:0] weights [OUT_FEATURES-1:0][IN_FEATURES-1:0];
+    reg [31:0] biases [OUT_FEATURES-1:0];
 
     // Weight initialization from trained model
     initial begin
@@ -572,7 +572,7 @@ module linear_layer #(
     end
 
     // Internal signals
-    reg [31:0] output_reg [0:OUT_FEATURES-1];
+    reg [31:0] output_reg [OUT_FEATURES-1:0];
     integer i, j;
     reg [31:0] dot_product;
 
@@ -615,12 +615,12 @@ module relu_layer #(
 )(
     input wire clk,
     input wire reset,
-    input wire [31:0] input_data [0:DATA_SIZE-1],
-    output wire [31:0] output_data [0:DATA_SIZE-1]
+    input wire [31:0] input_data [DATA_SIZE-1:0],
+    output wire [31:0] output_data [DATA_SIZE-1:0]
 );
 
     // Internal signals
-    reg [31:0] output_reg [0:DATA_SIZE-1];
+    reg [31:0] output_reg [DATA_SIZE-1:0];
     integer i;
 
     // ReLU computation
@@ -667,13 +667,13 @@ module conv2d_layer #(
 )(
     input wire clk,
     input wire reset,
-    input wire [31:0] input_data [0:IN_CHANNELS*INPUT_HEIGHT*INPUT_WIDTH-1],
-    output wire [31:0] output_data [0:OUT_CHANNELS*INPUT_HEIGHT*INPUT_WIDTH-1]
+    input wire [31:0] input_data [IN_CHANNELS*INPUT_HEIGHT*INPUT_WIDTH-1:0],
+    output wire [31:0] output_data [OUT_CHANNELS*INPUT_HEIGHT*INPUT_WIDTH-1:0]
 );
 
     // Weight and bias storage with actual trained weights
-    reg [31:0] weights [0:OUT_CHANNELS-1][0:IN_CHANNELS-1][0:KERNEL_SIZE-1][0:KERNEL_SIZE-1];
-    reg [31:0] biases [0:OUT_CHANNELS-1];
+    reg [31:0] weights [OUT_CHANNELS-1:0][IN_CHANNELS-1:0][KERNEL_SIZE-1:0][KERNEL_SIZE-1:0];
+    reg [31:0] biases [OUT_CHANNELS-1:0];
 
     // Weight initialization from trained model
     initial begin
@@ -740,7 +740,7 @@ module conv2d_layer #(
     end
 
     // Internal signals
-    reg [31:0] output_reg [0:OUT_CHANNELS*INPUT_HEIGHT*INPUT_WIDTH-1];
+    reg [31:0] output_reg [OUT_CHANNELS*INPUT_HEIGHT*INPUT_WIDTH-1:0];
     integer oc, ic, i, j, ki, kj;
     integer input_i, input_j;
     reg [31:0] conv_result;
