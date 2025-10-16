@@ -3,7 +3,7 @@
 // Model: SimpleCNN
 `timescale 1ns / 1ps
 
-module tt_um_marker (
+module tt_um_mark28277 (
     input wire clk,
     input wire reset,
     input wire [31:0] input_data [0:3071],
