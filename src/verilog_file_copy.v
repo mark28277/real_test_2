@@ -143,87 +143,6 @@ module tt_um_mark28277 (
 
 endmodule
 
-// MaxPooling Layer Implementation
-module maxpool2d_layer #(
-    parameter KERNEL_SIZE,
-    parameter STRIDE,
-    parameter INPUT_SIZE,
-    parameter CHANNELS
-)(
-    input wire clk,
-    input wire reset,
-    input wire [8191:0] input_data,    // Single dimension only for Tiny Tapeout
-    output wire [1023:0] output_data     // Single dimension only for Tiny Tapeout
-);
-
-    // Internal signals
-    reg [31:0] output_reg [CHANNELS*(INPUT_SIZE/KERNEL_SIZE)*(INPUT_SIZE/KERNEL_SIZE)-1:0];
-    integer c, i, j, ki, kj;
-    integer input_i, input_j, output_i, output_j;
-    integer index;
-    reg [31:0] max_val;
-    reg first_value_found;
-
-    // Max pooling computation
-    always @(posedge clk) begin
-        if (reset) begin
-            // Reset output data
-            for (c = 0; c < CHANNELS; c = c + 1) begin
-                for (output_i = 0; output_i < INPUT_SIZE/KERNEL_SIZE; output_i = output_i + 1) begin
-                    for (output_j = 0; output_j < INPUT_SIZE/KERNEL_SIZE; output_j = output_j + 1) begin
-                        output_reg[c * (INPUT_SIZE/KERNEL_SIZE) * (INPUT_SIZE/KERNEL_SIZE) + output_i * (INPUT_SIZE/KERNEL_SIZE) + output_j] <= 32'b0;
-                    end
-                end
-            end
-        end else begin
-            // Perform max pooling for each channel
-            for (c = 0; c < CHANNELS; c = c + 1) begin
-                for (output_i = 0; output_i < INPUT_SIZE/KERNEL_SIZE; output_i = output_i + 1) begin
-                    for (output_j = 0; output_j < INPUT_SIZE/KERNEL_SIZE; output_j = output_j + 1) begin
-                        max_val = 32'h00000000; // Start with zero instead of minimum signed integer
-                        first_value_found = 1'b0;
-                        
-                        // Find maximum value in kernel window
-                        for (ki = 0; ki < KERNEL_SIZE; ki = ki + 1) begin
-                            for (kj = 0; kj < KERNEL_SIZE; kj = kj + 1) begin
-                                input_i = output_i * STRIDE + ki;
-                                input_j = output_j * STRIDE + kj;
-                                
-                                // Check bounds
-                                if (input_i < INPUT_SIZE && input_j < INPUT_SIZE) begin
-                                    index = c * INPUT_SIZE * INPUT_SIZE + input_i * INPUT_SIZE + input_j;
-                                    if (!first_value_found) begin
-                                        max_val = input_data[index];
-                                        first_value_found = 1'b1;
-                                    end else if (input_data[index] > max_val) begin
-                                        max_val = input_data[index];
-                                    end
-                                end
-                            end
-                        end
-                        
-                        // If no valid values found, use zero
-                        if (!first_value_found) begin
-                            max_val = 32'h00000000;
-                        end
-                        
-                        output_reg[c * (INPUT_SIZE/KERNEL_SIZE) * (INPUT_SIZE/KERNEL_SIZE) + output_i * (INPUT_SIZE/KERNEL_SIZE) + output_j] <= max_val;
-                    end
-                end
-            end
-        end
-    end
-
-    // Continuous assignment from internal register to output wire
-    genvar k;
-    generate
-        for (k = 0; k < CHANNELS*(INPUT_SIZE/KERNEL_SIZE)*(INPUT_SIZE/KERNEL_SIZE); k = k + 1) begin : output_assign
-            assign output_data[k] = output_reg[k];
-        end
-    endgenerate
-
-endmodule
-
 // Convolutional Layer Implementation
 module conv2d_layer #(
     parameter IN_CHANNELS,
@@ -343,7 +262,7 @@ module conv2d_layer #(
                                     // Check bounds
                                     if (input_i >= 0 && input_i < INPUT_HEIGHT && input_j >= 0 && input_j < INPUT_WIDTH) begin
                                         conv_result = conv_result + 
-                                            (input_data[ic * INPUT_HEIGHT * INPUT_WIDTH + input_i * INPUT_WIDTH + input_j] * weights[oc][ic][ki][kj]);
+                                            (input_data[(ic * INPUT_HEIGHT * INPUT_WIDTH + input_i * INPUT_WIDTH + input_j) * 32 +: 32] * weights[oc][ic][ki][kj]);
                                     end
                                 end
                             end
@@ -361,7 +280,7 @@ module conv2d_layer #(
     genvar k;
     generate
         for (k = 0; k < OUT_CHANNELS*INPUT_HEIGHT*INPUT_WIDTH; k = k + 1) begin : output_assign
-            assign output_data[k] = output_reg[k];
+            assign output_data[(k * 32) +: 32] = output_reg[k];
         end
     endgenerate
 
@@ -739,7 +658,7 @@ module linear_layer #(
                 
                 // Dot product of weights and input
                 for (j = 0; j < IN_FEATURES; j = j + 1) begin
-                    dot_product = dot_product + (input_data[j] * weights[i][j]);
+                    dot_product = dot_product + (input_data[(j * 32) +: 32] * weights[i][j]);
                 end
                 
                 // Add bias
@@ -752,7 +671,88 @@ module linear_layer #(
     genvar k;
     generate
         for (k = 0; k < OUT_FEATURES; k = k + 1) begin : output_assign
-            assign output_data[k] = output_reg[k];
+            assign output_data[(k * 32) +: 32] = output_reg[k];
+        end
+    endgenerate
+
+endmodule
+
+// MaxPooling Layer Implementation
+module maxpool2d_layer #(
+    parameter KERNEL_SIZE,
+    parameter STRIDE,
+    parameter INPUT_SIZE,
+    parameter CHANNELS
+)(
+    input wire clk,
+    input wire reset,
+    input wire [8191:0] input_data,    // Single dimension only for Tiny Tapeout
+    output wire [1023:0] output_data     // Single dimension only for Tiny Tapeout
+);
+
+    // Internal signals
+    reg [31:0] output_reg [CHANNELS*(INPUT_SIZE/KERNEL_SIZE)*(INPUT_SIZE/KERNEL_SIZE)-1:0];
+    integer c, i, j, ki, kj;
+    integer input_i, input_j, output_i, output_j;
+    integer index;
+    reg [31:0] max_val;
+    reg first_value_found;
+
+    // Max pooling computation
+    always @(posedge clk) begin
+        if (reset) begin
+            // Reset output data
+            for (c = 0; c < CHANNELS; c = c + 1) begin
+                for (output_i = 0; output_i < INPUT_SIZE/KERNEL_SIZE; output_i = output_i + 1) begin
+                    for (output_j = 0; output_j < INPUT_SIZE/KERNEL_SIZE; output_j = output_j + 1) begin
+                        output_reg[c * (INPUT_SIZE/KERNEL_SIZE) * (INPUT_SIZE/KERNEL_SIZE) + output_i * (INPUT_SIZE/KERNEL_SIZE) + output_j] <= 32'b0;
+                    end
+                end
+            end
+        end else begin
+            // Perform max pooling for each channel
+            for (c = 0; c < CHANNELS; c = c + 1) begin
+                for (output_i = 0; output_i < INPUT_SIZE/KERNEL_SIZE; output_i = output_i + 1) begin
+                    for (output_j = 0; output_j < INPUT_SIZE/KERNEL_SIZE; output_j = output_j + 1) begin
+                        max_val = 32'h00000000; // Start with zero instead of minimum signed integer
+                        first_value_found = 1'b0;
+                        
+                        // Find maximum value in kernel window
+                        for (ki = 0; ki < KERNEL_SIZE; ki = ki + 1) begin
+                            for (kj = 0; kj < KERNEL_SIZE; kj = kj + 1) begin
+                                input_i = output_i * STRIDE + ki;
+                                input_j = output_j * STRIDE + kj;
+                                
+                                // Check bounds
+                                if (input_i < INPUT_SIZE && input_j < INPUT_SIZE) begin
+                                    index = c * INPUT_SIZE * INPUT_SIZE + input_i * INPUT_SIZE + input_j;
+                                    if (!first_value_found) begin
+                                        max_val = input_data[(index * 32) +: 32];
+                                        first_value_found = 1'b1;
+                                    end else if (input_data[(index * 32) +: 32] > max_val) begin
+                                        max_val = input_data[(index * 32) +: 32];
+                                    end
+                                end
+                            end
+                        end
+                        
+                        // If no valid values found, use zero
+                        if (!first_value_found) begin
+                            max_val = 32'h00000000;
+                        end
+                        
+                        output_reg[c * (INPUT_SIZE/KERNEL_SIZE) * (INPUT_SIZE/KERNEL_SIZE) + output_i * (INPUT_SIZE/KERNEL_SIZE) + output_j] <= max_val;
+                    end
+                end
+            end
+        end
+    end
+
+    // Continuous assignment from internal register to output wire
+    genvar k;
+    generate
+        for (k = 0; k < CHANNELS*(INPUT_SIZE/KERNEL_SIZE)*(INPUT_SIZE/KERNEL_SIZE); k = k + 1) begin : output_assign
+            assign output_data[(k * 32) +: 32] = output_reg[k];
         end
     endgenerate
 
@@ -783,9 +783,9 @@ module relu_layer #(
             // Apply ReLU activation element-wise
             for (i = 0; i < DATA_SIZE; i = i + 1) begin
                 // ReLU: output = max(0, input)
-                if (input_data[i][31] == 1'b0) begin
+                if (input_data[(i * 32) +: 32][31] == 1'b0) begin
                     // Positive number - pass through
-                    output_reg[i] <= input_data[i];
+                    output_reg[i] <= input_data[(i * 32) +: 32];
                 end else begin
                     // Negative number - output zero
                     output_reg[i] <= 32'b0;
@@ -798,7 +798,7 @@ module relu_layer #(
     genvar k;
     generate
         for (k = 0; k < DATA_SIZE; k = k + 1) begin : output_assign
-            assign output_data[k] = output_reg[k];
+            assign output_data[(k * 32) +: 32] = output_reg[k];
         end
     endgenerate
 
