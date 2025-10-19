@@ -24,7 +24,7 @@ module tt_um_mark28277 (
 
     // Conv2d Layer 0
     wire [7:0] conv_0_out;
-    conv2d_0 conv_inst_0 (
+    conv2d_layer conv_inst_0 (
         .clk(clk),
         .reset(reset),
         .input_data(input_data),
@@ -33,7 +33,7 @@ module tt_um_mark28277 (
 
     // ReLU Layer 1
     wire [7:0] relu_1_out;
-    relu_1 relu_inst_1 (
+    relu_layer relu_inst_1 (
         .clk(clk),
         .reset(reset),
         .input_data(conv_0_out),
@@ -42,7 +42,7 @@ module tt_um_mark28277 (
 
     // MaxPool2d Layer 2
     wire [7:0] maxpool_2_out;
-    maxpool_2 maxpool_inst_2 (
+    maxpool_layer maxpool_inst_2 (
         .clk(clk),
         .reset(reset),
         .input_data(relu_1_out),
@@ -51,7 +51,7 @@ module tt_um_mark28277 (
 
     // Linear Layer 3
     wire [7:0] linear_3_out;
-    linear_3 linear_inst_3 (
+    linear_layer linear_inst_3 (
         .clk(clk),
         .reset(reset),
         .input_data(maxpool_2_out),
