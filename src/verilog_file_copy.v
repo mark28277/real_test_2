@@ -150,8 +150,8 @@ module linear_layer #(
 )(
     input wire clk,
     input wire reset,
-    input wire [31:0] input_data [IN_FEATURES-1:0],
-    output wire [31:0] output_data [OUT_FEATURES-1:0]
+    input wire [31:0] input_data [0:1023],  // Fixed large size for Tiny Tapeout
+    output wire [31:0] output_data [0:63]   // Fixed large size for Tiny Tapeout
 );
 
     // Weight and bias storage with actual trained weights
@@ -534,52 +534,6 @@ module linear_layer #(
 
 endmodule
 
-// ReLU Activation Implementation
-module relu_layer #(
-    parameter DATA_SIZE
-)(
-    input wire clk,
-    input wire reset,
-    input wire [31:0] input_data [DATA_SIZE-1:0],
-    output wire [31:0] output_data [DATA_SIZE-1:0]
-);
-
-    // Internal signals
-    reg [31:0] output_reg [DATA_SIZE-1:0];
-    integer i;
-
-    // ReLU computation
-    always @(posedge clk) begin
-        if (reset) begin
-            // Reset output data
-            for (i = 0; i < DATA_SIZE; i = i + 1) begin
-                output_reg[i] <= 32'b0;
-            end
-        end else begin
-            // Apply ReLU activation element-wise
-            for (i = 0; i < DATA_SIZE; i = i + 1) begin
-                // ReLU: output = max(0, input)
-                if (input_data[i][31] == 1'b0) begin
-                    // Positive number - pass through
-                    output_reg[i] <= input_data[i];
-                end else begin
-                    // Negative number - output zero
-                    output_reg[i] <= 32'b0;
-                end
-            end
-        end
-    end
-
-    // Continuous assignment from internal register to output wire
-    genvar k;
-    generate
-        for (k = 0; k < DATA_SIZE; k = k + 1) begin : output_assign
-            assign output_data[k] = output_reg[k];
-        end
-    endgenerate
-
-endmodule
-
 // MaxPooling Layer Implementation
 module maxpool2d_layer #(
     parameter KERNEL_SIZE,
@@ -589,8 +543,8 @@ module maxpool2d_layer #(
 )(
     input wire clk,
     input wire reset,
-    input wire [31:0] input_data [CHANNELS*INPUT_SIZE*INPUT_SIZE-1:0],
-    output wire [31:0] output_data [CHANNELS*(INPUT_SIZE/KERNEL_SIZE)*(INPUT_SIZE/KERNEL_SIZE)-1:0]
+    input wire [31:0] input_data [0:8191],  // Fixed large size for Tiny Tapeout
+    output wire [31:0] output_data [0:1023]  // Fixed large size for Tiny Tapeout
 );
 
     // Internal signals
@@ -669,14 +623,12 @@ module conv2d_layer #(
     parameter INPUT_WIDTH,
     parameter KERNEL_SIZE,
     parameter STRIDE,
-    parameter PADDING,
-    parameter INPUT_SIZE = IN_CHANNELS*INPUT_HEIGHT*INPUT_WIDTH,
-    parameter OUTPUT_SIZE = OUT_CHANNELS*INPUT_HEIGHT*INPUT_WIDTH
+    parameter PADDING
 )(
     input wire clk,
     input wire reset,
-    input wire [31:0] input_data [INPUT_SIZE-1:0],
-    output wire [31:0] output_data [OUTPUT_SIZE-1:0]
+    input wire [31:0] input_data [0:8191],  // Fixed large size for Tiny Tapeout
+    output wire [31:0] output_data [0:8191]  // Fixed large size for Tiny Tapeout
 );
 
     // Weight and bias storage with actual trained weights
@@ -800,6 +752,52 @@ module conv2d_layer #(
     genvar k;
     generate
         for (k = 0; k < OUT_CHANNELS*INPUT_HEIGHT*INPUT_WIDTH; k = k + 1) begin : output_assign
+            assign output_data[k] = output_reg[k];
+        end
+    endgenerate
+
+endmodule
+
+// ReLU Activation Implementation
+module relu_layer #(
+    parameter DATA_SIZE
+)(
+    input wire clk,
+    input wire reset,
+    input wire [31:0] input_data [0:4095],  // Fixed large size for Tiny Tapeout
+    output wire [31:0] output_data [0:4095]  // Fixed large size for Tiny Tapeout
+);
+
+    // Internal signals
+    reg [31:0] output_reg [DATA_SIZE-1:0];
+    integer i;
+
+    // ReLU computation
+    always @(posedge clk) begin
+        if (reset) begin
+            // Reset output data
+            for (i = 0; i < DATA_SIZE; i = i + 1) begin
+                output_reg[i] <= 32'b0;
+            end
+        end else begin
+            // Apply ReLU activation element-wise
+            for (i = 0; i < DATA_SIZE; i = i + 1) begin
+                // ReLU: output = max(0, input)
+                if (input_data[i][31] == 1'b0) begin
+                    // Positive number - pass through
+                    output_reg[i] <= input_data[i];
+                end else begin
+                    // Negative number - output zero
+                    output_reg[i] <= 32'b0;
+                end
+            end
+        end
+    end
+
+    // Continuous assignment from internal register to output wire
+    genvar k;
+    generate
+        for (k = 0; k < DATA_SIZE; k = k + 1) begin : output_assign
             assign output_data[k] = output_reg[k];
         end
     endgenerate
