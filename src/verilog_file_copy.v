@@ -1,5 +1,6 @@
-// Verilog description of CNN
-// Made from PyTorch model :)
+// Neural Network Hardware Implementation
+// Auto-generated from PyTorch model
+// Model: SimpleCNN
 `timescale 1ns / 1ps
 
 module tt_um_mark28277 (
@@ -105,11 +106,11 @@ module tt_um_mark28277 (
     reg [7:0] uio_out_reg;
     reg [7:0] uio_oe_reg;
 
-    // Connect layer_3_out to output_data
-    genvar m;
+    // Connect layer_3_out to output_data using generate loop
+    genvar out_idx;
     generate
-        for (m = 0; m < 10; m = m + 1) begin : output_assign
-            assign output_data[m] = layer_3_out[m];
+        for (out_idx = 0; out_idx < 10; out_idx = out_idx + 1) begin : output_assign
+            assign output_data[out_idx] = layer_3_out[out_idx];
         end
     endgenerate
 
@@ -142,52 +143,6 @@ module tt_um_mark28277 (
 
 endmodule
 
-// ReLU Activation Implementation
-module relu_layer #(
-    parameter DATA_SIZE
-)(
-    input wire clk,
-    input wire reset,
-    input wire [31:0] input_data [0:DATA_SIZE-1],
-    output wire [31:0] output_data [0:DATA_SIZE-1]
-);
-
-    // Internal signals
-    reg [31:0] output_reg [0:DATA_SIZE-1];
-    integer i;
-
-    // ReLU computation
-    always @(posedge clk) begin
-        if (reset) begin
-            // Reset output data
-            for (i = 0; i < DATA_SIZE; i = i + 1) begin
-                output_reg[i] <= 32'b0;
-            end
-        end else begin
-            // Apply ReLU activation element-wise
-            for (i = 0; i < DATA_SIZE; i = i + 1) begin
-                // ReLU: output = max(0, input)
-                if (input_data[i][31] == 1'b0) begin
-                    // Positive number - pass through
-                    output_reg[i] <= input_data[i];
-                end else begin
-                    // Negative number - output zero
-                    output_reg[i] <= 32'b0;
-                end
-            end
-        end
-    end
-
-    // Continuous assignment from internal register to output wire
-    genvar k;
-    generate
-        for (k = 0; k < DATA_SIZE; k = k + 1) begin : output_assign
-            assign output_data[k] = output_reg[k];
-        end
-    endgenerate
-
-endmodule
-
 // Convolutional Layer Implementation
 module conv2d_layer #(
     parameter IN_CHANNELS,
@@ -196,12 +151,14 @@ module conv2d_layer #(
     parameter INPUT_WIDTH,
     parameter KERNEL_SIZE,
     parameter STRIDE,
-    parameter PADDING
+    parameter PADDING,
+    parameter INPUT_SIZE = IN_CHANNELS*INPUT_HEIGHT*INPUT_WIDTH,
+    parameter OUTPUT_SIZE = OUT_CHANNELS*INPUT_HEIGHT*INPUT_WIDTH
 )(
     input wire clk,
     input wire reset,
-    input wire [31:0] input_data [0:IN_CHANNELS*INPUT_HEIGHT*INPUT_WIDTH-1],
-    output wire [31:0] output_data [0:OUT_CHANNELS*INPUT_HEIGHT*INPUT_WIDTH-1]
+    input wire [31:0] input_data [INPUT_SIZE-1:0],
+    output wire [31:0] output_data [OUTPUT_SIZE-1:0]
 );
 
     // Weight and bias storage with actual trained weights
@@ -338,8 +295,8 @@ module linear_layer #(
 )(
     input wire clk,
     input wire reset,
-    input wire [31:0] input_data [0:IN_FEATURES-1],
-    output wire [31:0] output_data [0:OUT_FEATURES-1]
+    input wire [31:0] input_data [IN_FEATURES-1:0],
+    output wire [31:0] output_data [OUT_FEATURES-1:0]
 );
 
     // Weight and bias storage with actual trained weights
@@ -797,6 +754,52 @@ module maxpool2d_layer #(
     genvar k;
     generate
         for (k = 0; k < CHANNELS*(INPUT_SIZE/KERNEL_SIZE)*(INPUT_SIZE/KERNEL_SIZE); k = k + 1) begin : output_assign
+            assign output_data[k] = output_reg[k];
+        end
+    endgenerate
+
+endmodule
+
+// ReLU Activation Implementation
+module relu_layer #(
+    parameter DATA_SIZE
+)(
+    input wire clk,
+    input wire reset,
+    input wire [31:0] input_data [0:DATA_SIZE-1],
+    output wire [31:0] output_data [0:DATA_SIZE-1]
+);
+
+    // Internal signals
+    reg [31:0] output_reg [0:DATA_SIZE-1];
+    integer i;
+
+    // ReLU computation
+    always @(posedge clk) begin
+        if (reset) begin
+            // Reset output data
+            for (i = 0; i < DATA_SIZE; i = i + 1) begin
+                output_reg[i] <= 32'b0;
+            end
+        end else begin
+            // Apply ReLU activation element-wise
+            for (i = 0; i < DATA_SIZE; i = i + 1) begin
+                // ReLU: output = max(0, input)
+                if (input_data[i][31] == 1'b0) begin
+                    // Positive number - pass through
+                    output_reg[i] <= input_data[i];
+                end else begin
+                    // Negative number - output zero
+                    output_reg[i] <= 32'b0;
+                end
+            end
+        end
+    end
+
+    // Continuous assignment from internal register to output wire
+    genvar k;
+    generate
+        for (k = 0; k < DATA_SIZE; k = k + 1) begin : output_assign
             assign output_data[k] = output_reg[k];
         end
     endgenerate
